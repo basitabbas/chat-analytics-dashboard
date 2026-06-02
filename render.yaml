@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: chat-analytics-dashboard-api
+    env: python
+    plan: free
+    autoDeploy: true
+    buildCommand: bash render-build.sh
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0: --workers 2 --threads 4 --timeout 120
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SQL_DRIVER
+        value: ODBC Driver 18 for SQL Server
+      - key: SQL_ENCRYPT
+        value: "yes"
+      - key: SQL_TRUST_SERVER_CERTIFICATE
+        value: "yes"
+      - key: CORS_ORIGINS
+        sync: false
+      - key: SQL_SERVER
+        sync: false
+      - key: SQL_DATABASE
+        sync: false
+      - key: SQL_TRUSTED
+        sync: false
+      - key: SQL_USERNAME
+        sync: false
+      - key: SQL_PASSWORD
+        sync: false

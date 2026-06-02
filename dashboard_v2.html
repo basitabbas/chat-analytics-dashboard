@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Analytics Dashboard</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0c1017;
+      --bg2: #111827;
+      --card: #161d2e;
+      --card-h: #1b2438;
+      --border: #1f2a3d;
+      --border-h: #2a3650;
+      --text: #e2e8f0;
+      --text2: #8896ab;
+      --text3: #556178;
+      --accent: #4f8ff7;
+      --accent2: #3a6fd8;
+      --accent-a: rgba(79, 143, 247, .12);
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --purple: #a78bfa;
+      --cyan: #22d3ee;
+      --pink: #f472b6;
+      --lime: #84cc16;
+      --tt-bg: #1e293b;
+      --tt-border: #2a3650;
+      --grid: rgba(255, 255, 255, .04);
+      --cborder: rgba(255, 255, 255, .05);
+      --ctext: rgba(255, 255, 255, .45);
+      --funnel-text: #fff;
+      --sidebar-bg: linear-gradient(180deg, #0e1525, #0a0f1a);
+      --shadow: 0 4px 24px rgba(0, 0, 0, .35);
+      --radius: 10px;
+      --sb-w: 54px;
+      --tb-h: 56px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: background .4s, color .4s;
+    }
+
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: var(--sb-w);
+      background: var(--sidebar-bg);
+      border-right: 1px solid rgba(255, 255, 255, .06);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 14px 0;
+      gap: 4px;
+      transition: opacity .3s;
+    }
+
+    .sidebar.locked {
+      pointer-events: none;
+      opacity: .4;
+    }
+
+    .sb-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--cyan));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      margin-bottom: 18px;
+      box-shadow: 0 4px 14px rgba(79, 143, 247, .3);
+      transition: background .4s, box-shadow .4s;
+    }
+
+    .sb-item {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      cursor: pointer;
+      color: rgba(255, 255, 255, .4);
+      transition: all .2s;
+      position: relative;
+    }
+
+    .sb-item:hover {
+      background: rgba(79, 143, 247, .15);
+      color: rgba(255, 255, 255, .8);
+    }
+
+    .sb-item.active {
+      background: rgba(79, 143, 247, .18);
+      color: #fff;
+    }
+
+    .sb-item.active::before {
+      content: '';
+      position: absolute;
+      left: -9px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 16px;
+      border-radius: 0 3px 3px 0;
+      background: var(--accent);
+      transition: background .4s;
+    }
+
+    .sb-spacer {
+      flex: 1;
+    }
+
+    .sb-item .sb-tip {
+      position: absolute;
+      left: calc(100% + 10px);
+      top: 50%;
+      transform: translateY(-50%);
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .15s;
+      border: 1px solid #2a3650;
+      z-index: 30;
+    }
+
+    .sb-item:hover .sb-tip {
+      opacity: 1;
+    }
+
+    .main {
+      margin-left: var(--sb-w);
+      min-height: 100vh;
+      transition: margin .3s;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 15;
+      height: var(--tb-h);
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      gap: 12px;
+      transition: background .4s, border-color .4s;
+    }
+
+    .tb-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .tb-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -.3px;
+      white-space: nowrap;
+    }
+
+    .tb-sub {
+      font-size: 10px;
+      font-family: 'DM Mono', monospace;
+      color: var(--text3);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 300px;
+      transition: color .4s;
+    }
+
+    .tb-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tb-flabel {
+      font-size: 9px;
+      font-family: 'DM Mono', monospace;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: color .4s;
+    }
+
+    select {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      outline: none;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    select:hover {
+      border-color: var(--border-h);
+    }
+
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-a);
+    }
+
+    .btn {
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all .2s;
+    }
+
+    .btn-accent {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(79, 143, 247, .2);
+      transition: all .4s;
+    }
+
+    .btn-accent:hover {
+      filter: brightness(1.08);
+    }
+
+    .btn-accent:disabled {
+      background: var(--text3);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .live {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 16px;
+      background: rgba(34, 197, 94, .1);
+      border: 1px solid rgba(34, 197, 94, .2);
+      font-size: 9px;
+      font-family: 'DM Mono', monospace;
+      color: var(--green);
+      letter-spacing: 1px;
+    }
+
+    .live-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .3
+      }
+    }
+
+    /* Theme Dots */
+    .theme-dots {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .tdot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all .2s;
+      position: relative;
+    }
+
+    .tdot:hover {
+      transform: scale(1.15);
+    }
+
+    .tdot.active {
+      border-color: var(--text);
+      box-shadow: 0 0 0 2px var(--bg);
+    }
+
+    .tdot .tdot-tip {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 4px 8px;
+      border-radius: 5px;
+      font-size: 10px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .15s;
+      border: 1px solid #2a3650;
+      z-index: 30;
+    }
+
+    .tdot:hover .tdot-tip {
+      opacity: 1;
+    }
+
+    .content {
+      padding: 18px 22px 36px;
+      animation: pageFade .3s ease;
+    }
+
+    @keyframes pageFade {
+      from {
+        opacity: 0;
+        transform: translateY(6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .sec-label {
+      font-size: 9px;
+      font-family: 'DM Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 2.5px;
+      color: var(--text3);
+      margin: 22px 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: color .4s;
+    }
+
+    .sec-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+      transition: background .4s;
+    }
+
+    .sec-label:first-child {
+      margin-top: 0;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+    }
+
+    .kpi-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      position: relative;
+      overflow: hidden;
+      transition: all .3s;
+      animation: cardIn .4s ease both;
+    }
+
+    .kpi-card:hover {
+      border-color: var(--border-h);
+      box-shadow: var(--shadow);
+    }
+
+    .kpi-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--kpi-c, var(--accent));
+    }
+
+    .kpi-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .kpi-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      border: 1px solid;
+    }
+
+    .kpi-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 8px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid;
+    }
+
+    .kpi-val {
+      font-family: 'DM Mono', monospace;
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 2px;
+      letter-spacing: -.5px;
+    }
+
+    .kpi-lbl {
+      font-size: 11px;
+      color: var(--text2);
+      font-weight: 500;
+      transition: color .4s;
+    }
+
+    .kpi-spark {
+      height: 32px;
+      margin-top: 8px;
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 10px;
+    }
+
+    .chart-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: all .3s;
+      animation: cardIn .4s ease both;
+    }
+
+    .chart-card:hover {
+      border-color: var(--border-h);
+      box-shadow: var(--shadow);
+    }
+
+    .chart-card.wide {
+      grid-column: span 2;
+    }
+
+    .cc-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px 0;
+    }
+
+    .cc-title {
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cc-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 3px;
+    }
+
+    .cc-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, .03);
+      color: var(--text3);
+      border: 1px solid var(--border);
+      transition: all .4s;
+    }
+
+    .cc-body {
+      padding: 6px 10px 12px;
+      height: 270px;
+      position: relative;
+    }
+
+    .cc-body.tall {
+      height: 330px;
+    }
+
+    .funnel-wrap {
+      padding: 6px 14px 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      height: 100%;
+      justify-content: center;
+    }
+
+    .funnel-row {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      gap: 8px;
+    }
+
+    .funnel-bar {
+      height: 38px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      transition: width 1.2s cubic-bezier(.4, 0, .2, 1);
+      min-width: 50px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .funnel-bar::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(255, 255, 255, .08), transparent 60%);
+      pointer-events: none;
+    }
+
+    .funnel-lbl {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--funnel-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 65%;
+    }
+
+    .funnel-val {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--funnel-text);
+      opacity: .85;
+      white-space: nowrap;
+    }
+
+    .funnel-rate {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--text3);
+      min-width: 46px;
+      text-align: right;
+    }
+
+    .funnel-drop {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      color: var(--red);
+      min-width: 46px;
+      text-align: right;
+    }
+
+    .faq-list {
+      padding: 4px 0;
+      overflow-y: auto;
+      max-height: 100%;
+    }
+
+    .faq-item {
+      display: flex;
+      gap: 8px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+      transition: border-color .4s;
+    }
+
+    .faq-item:last-child {
+      border-bottom: none;
+    }
+
+    .faq-num {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      color: var(--accent);
+      min-width: 18px;
+      padding-top: 2px;
+      transition: color .4s;
+    }
+
+    .faq-text {
+      font-size: 11px;
+      color: var(--text2);
+      line-height: 1.5;
+      transition: color .4s;
+    }
+
+    .kw-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 4px 0;
+    }
+
+    .kw-chip {
+      padding: 4px 9px;
+      border-radius: 5px;
+      font-size: 10px;
+      font-family: 'DM Mono', monospace;
+      background: var(--accent-a);
+      border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+      color: var(--accent);
+      transition: all .15s;
+      cursor: default;
+    }
+
+    .kw-chip:hover {
+      background: color-mix(in srgb, var(--accent) 20%, transparent);
+      border-color: var(--accent);
+    }
+
+    .traffic-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      transition: border-color .4s;
+    }
+
+    .traffic-item:last-child {
+      border-bottom: none;
+    }
+
+    .traffic-ico {
+      width: 26px;
+      height: 26px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, .03);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+      transition: all .4s;
+    }
+
+    .traffic-name {
+      font-size: 11px;
+      flex: 1;
+      color: var(--text2);
+      transition: color .4s;
+    }
+
+    .traffic-val {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--text3);
+      min-width: 36px;
+      text-align: right;
+      transition: color .4s;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 28px;
+      color: var(--text3);
+      font-size: 10px;
+      font-family: 'DM Mono', monospace;
+      background: rgba(255, 255, 255, .02);
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      transition: all .4s;
+    }
+
+    /* Settings Page */
+    .theme-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .theme-opt {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      cursor: pointer;
+      transition: all .25s;
+      position: relative;
+    }
+
+    .theme-opt:hover {
+      border-color: var(--border-h);
+      transform: translateY(-1px);
+    }
+
+    .theme-opt.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-a);
+    }
+
+    .theme-opt .to-check {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .theme-opt.active .to-check {
+      display: flex;
+    }
+
+    .to-preview {
+      display: flex;
+      height: 28px;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .to-preview span {
+      flex: 1;
+    }
+
+    .to-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      transition: color .4s;
+    }
+
+    .to-desc {
+      font-size: 10px;
+      color: var(--text3);
+      margin-top: 2px;
+      transition: color .4s;
+    }
+
+    /* Help Page */
+    .help-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 12px;
+      transition: all .4s;
+    }
+
+    .help-section h3 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text);
+      transition: color .4s;
+    }
+
+    .help-section p {
+      font-size: 12px;
+      color: var(--text2);
+      line-height: 1.7;
+      transition: color .4s;
+    }
+
+    .help-section ul {
+      padding-left: 18px;
+      margin-top: 6px;
+    }
+
+    .help-section li {
+      font-size: 12px;
+      color: var(--text2);
+      line-height: 1.8;
+      transition: color .4s;
+    }
+
+    .help-section code {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      background: var(--accent-a);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent);
+      transition: all .4s;
+    }
+
+    /* Loading */
+    .loader-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      transition: opacity .35s, background .4s;
+    }
+
+    .loader-overlay.off {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      animation: spin .7s linear infinite;
+      transition: border-color .4s;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .loader-txt {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--text2);
+      transition: color .4s;
+    }
+
+    .loader-sub {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      color: var(--text3);
+      transition: color .4s;
+    }
+
+    .err-card {
+      background: rgba(239, 68, 68, .08);
+      border: 1px solid rgba(239, 68, 68, .2);
+      border-radius: var(--radius);
+      padding: 18px;
+      text-align: center;
+      display: none;
+      margin: 0 22px 14px;
+    }
+
+    .err-card h3 {
+      color: var(--red);
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .err-card p {
+      color: var(--text3);
+      font-size: 10px;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .btn-spin {
+      display: inline-block;
+      width: 11px;
+      height: 11px;
+      border: 2px solid rgba(255, 255, 255, .3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+
+    @keyframes cardIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    @media(max-width:1100px) {
+      .chart-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .chart-card.wide {
+        grid-column: span 1;
+      }
+    }
+
+    @media(max-width:768px) {
+      .sidebar {
+        display: none;
+      }
+
+      .main {
+        margin-left: 0;
+      }
+
+      .content {
+        padding: 12px 10px 28px;
+      }
+
+      .topbar {
+        padding: 0 12px;
+        flex-wrap: wrap;
+        height: auto;
+        min-height: var(--tb-h);
+        padding-top: 8px;
+        padding-bottom: 8px;
+      }
+
+      .tb-right {
+        width: 100%;
+      }
+
+      .kpi-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 8px;
+      }
+
+      .kpi-val {
+        font-size: 18px;
+      }
+
+      .chart-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .cc-body {
+        height: 220px;
+      }
+
+      .theme-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      }
+    }
+
+    @media(prefers-reduced-motion:reduce) {
+
+      *,
+      *::before,
+      *::after {
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <aside class="sidebar locked" id="sidebar" aria-label="Navigation">
+    <div class="sb-logo">💬</div>
+    <div class="sb-item active" data-page="dashboard" onclick="navigateTo('dashboard')"><span>📊</span><span
+        class="sb-tip">Dashboard</span></div>
+    <div class="sb-item" data-page="agents" onclick="navigateTo('agents')"><span>👥</span><span
+        class="sb-tip">Agents</span></div>
+    <div class="sb-item" data-page="chats" onclick="navigateTo('chats')"><span>💬</span><span
+        class="sb-tip">Chats</span></div>
+    <div class="sb-item" data-page="settings" onclick="navigateTo('settings')"><span>⚙️</span><span
+        class="sb-tip">Settings</span></div>
+    <div class="sb-spacer"></div>
+    <div class="sb-item" data-page="help" onclick="navigateTo('help')"><span>❓</span><span class="sb-tip">Help</span>
+    </div>
+  </aside>
+
+  <div class="loader-overlay" id="loader">
+    <div class="spinner"></div>
+    <div class="loader-txt" id="loaderTxt">Connecting...</div>
+    <div class="loader-sub" id="loaderSub"></div>
+  </div>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="tb-left">
+        <div>
+          <div class="tb-title" id="tbTitle">Chat Analytics</div>
+          <div class="tb-sub" id="tbSub">Loading...</div>
+        </div>
+      </div>
+      <div class="tb-right">
+        <div class="theme-dots" id="themeDots"></div>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span class="tb-flabel">Site</span>
+          <select id="selSite" aria-label="Website" onchange="onSiteChange()"></select>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span class="tb-flabel">Period</span>
+          <select id="selMonth" aria-label="Month"></select>
+        </div>
+        <button class="btn btn-accent" id="btnRefresh" onclick="loadDashboard()">Refresh</button>
+        <div class="live">
+          <div class="live-dot"></div>LIVE
+        </div>
+      </div>
+    </header>
+    <div class="err-card" id="errCard" style="display:none">
+      <h3 id="errTitle">Error</h3>
+      <p id="errMsg"></p>
+    </div>
+    <div class="content" id="contentArea">
+      <div class="sec-label" id="lblKpi" style="display:none">Key Metrics</div>
+      <div class="kpi-grid" id="kpiGrid"></div>
+      <div class="sec-label" id="lblCharts" style="display:none">Analytics Overview</div>
+      <div class="chart-grid" id="chartGrid"></div>
+      <div class="sec-label" id="lblTopn" style="display:none">Detailed Breakdown</div>
+      <div class="topn-grid" id="topnGrid"></div>
+    </div>
+  </div>
+
+  <script>
+    /* ═══════════════════════════════════════════════
+       THEME DEFINITIONS
+       ═══════════════════════════════════════════════ */
+    const THEMES = {
+      midnight: {
+        name: 'Midnight Blue', dot: '#4f8ff7',
+        bg: '#0c1017', bg2: '#111827', card: '#161d2e', cardH: '#1b2438',
+        border: '#1f2a3d', borderH: '#2a3650',
+        text: '#e2e8f0', text2: '#8896ab', text3: '#556178',
+        accent: '#4f8ff7', accent2: '#3a6fd8', accentA: 'rgba(79,143,247,.12)',
+        green: '#22c55e', amber: '#f59e0b', red: '#ef4444',
+        purple: '#a78bfa', cyan: '#22d3ee', pink: '#f472b6', lime: '#84cc16',
+        ttBg: '#1e293b', ttBorder: '#2a3650', grid: 'rgba(255,255,255,.04)',
+        cBorder: 'rgba(255,255,255,.05)', cText: 'rgba(255,255,255,.45)',
+        funnelText: '#ffffff', isDark: true
+      },
+      emerald: {
+        name: 'Emerald Night', dot: '#34d399',
+        bg: '#080f0c', bg2: '#0c1812', card: '#12241c', cardH: '#182e25',
+        border: '#1a3a2c', borderH: '#24503e',
+        text: '#d1fae5', text2: '#6ee7b7', text3: '#3d8b6e',
+        accent: '#34d399', accent2: '#10b981', accentA: 'rgba(52,211,153,.12)',
+        green: '#34d399', amber: '#fbbf24', red: '#f87171',
+        purple: '#c4b5fd', cyan: '#67e8f9', pink: '#f9a8d4', lime: '#a3e635',
+        ttBg: '#12241c', ttBorder: '#24503e', grid: 'rgba(52,211,153,.05)',
+        cBorder: 'rgba(52,211,153,.07)', cText: 'rgba(110,231,183,.45)',
+        funnelText: '#ffffff', isDark: true
+      },
+      sunset: {
+        name: 'Sunset Blaze', dot: '#f97316',
+        bg: '#100a07', bg2: '#18100c', card: '#231612', cardH: '#2c1d18',
+        border: '#3d2518', borderH: '#503224',
+        text: '#fde8d8', text2: '#fdba74', text3: '#9a6b52',
+        accent: '#f97316', accent2: '#ea580c', accentA: 'rgba(249,115,22,.12)',
+        green: '#4ade80', amber: '#fbbf24', red: '#f87171',
+        purple: '#c4b5fd', cyan: '#67e8f9', pink: '#f9a8d4', lime: '#a3e635',
+        ttBg: '#231612', ttBorder: '#503224', grid: 'rgba(249,115,22,.05)',
+        cBorder: 'rgba(249,115,22,.07)', cText: 'rgba(253,186,116,.45)',
+        funnelText: '#ffffff', isDark: true
+      },
+      arctic: {
+        name: 'Arctic Light', dot: '#2563eb',
+        bg: '#f1f5f9', bg2: '#e2e8f0', card: '#ffffff', cardH: '#f8fafc',
+        border: '#cbd5e1', borderH: '#a8b5c8',
+        text: '#0f172a', text2: '#475569', text3: '#94a3b8',
+        accent: '#2563eb', accent2: '#1d4ed8', accentA: 'rgba(37,99,235,.08)',
+        green: '#16a34a', amber: '#d97706', red: '#dc2626',
+        purple: '#7c3aed', cyan: '#0891b2', pink: '#db2777', lime: '#65a30d',
+        ttBg: '#ffffff', ttBorder: '#cbd5e1', grid: 'rgba(0,0,0,.06)',
+        cBorder: 'rgba(0,0,0,.08)', cText: 'rgba(0,0,0,.4)',
+        funnelText: '#ffffff', isDark: false
+      },
+      rose: {
+        name: 'Rose Quartz', dot: '#ec4899',
+        bg: '#0e0810', bg2: '#150f18', card: '#201824', cardH: '#2a2030',
+        border: '#3a2842', borderH: '#4e3658',
+        text: '#fce7f3', text2: '#f9a8d4', text3: '#9b6b8a',
+        accent: '#ec4899', accent2: '#db2777', accentA: 'rgba(236,72,153,.12)',
+        green: '#4ade80', amber: '#fbbf24', red: '#f87171',
+        purple: '#c4b5fd', cyan: '#67e8f9', pink: '#f9a8d4', lime: '#a3e635',
+        ttBg: '#201824', ttBorder: '#4e3658', grid: 'rgba(236,72,153,.05)',
+        cBorder: 'rgba(236,72,153,.07)', cText: 'rgba(249,168,212,.45)',
+        funnelText: '#ffffff', isDark: true
+      }
+    };
+
+    /* ═══════════════════════════════════════════════
+       STATE
+       ═══════════════════════════════════════════════ */
+    const API = "http://localhost:5000";
+    const COLORS = ['#4f8ff7', '#22d3ee', '#22c55e', '#a78bfa', '#f59e0b', '#ef4444', '#f472b6', '#84cc16'];
+    const CAT_STYLE = {
+      Volume: { color: '#4f8ff7', icon: '💬', chart: 'bar' }, Sales: { color: '#22c55e', icon: '💰', chart: 'bar' },
+      Lead: { color: '#a78bfa', icon: '🎯', chart: 'funnel' }, Sentiment: { color: '#f59e0b', icon: '😊', chart: 'doughnut' },
+      Agent: { color: '#22d3ee', icon: '🤝', chart: 'hbar' }, Metadata: { color: '#f472b6', icon: '📋', chart: 'hbar' },
+    };
+    const DEF_STYLE = { color: '#4f8ff7', icon: '📊', chart: 'bar' };
+    const REF_ICONS = { Google: '🔍', Direct: '🏠', 'bing.com': '🌐', 'facebook.com': '📘', 'yahoo.com': '🟣', Android: '📱' };
+
+    let metricCfg = [], topnCfg = [], charts = {}, currentTheme = 'midnight', currentPage = 'dashboard';
+    let apiData = { metrics: {}, topn: {} };
+    let dataLoaded = false;
+
+    /* ═══════════════════════════════════════════════
+       HELPERS
+       ═══════════════════════════════════════════════ */
+    const catOf = c => CAT_STYLE[c] || DEF_STYLE;
+    const fmt = (n, d = 0) => n == null ? '—' : Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+    const fmtK = n => { if (n == null) return '—'; const a = Math.abs(n); if (a >= 1e6) return (n < 0 ? '-' : '') + (a / 1e6).toFixed(1) + 'M'; if (a >= 1e3) return (n < 0 ? '-' : '') + (a / 1e3).toFixed(1) + 'K'; return fmt(n); };
+    const fmtMoney = n => { if (n == null) return '—'; const a = Math.abs(n); const p = n < 0 ? '-' : '$'; if (a >= 1e6) return p + (a / 1e6).toFixed(2) + 'M'; if (a >= 1e3) return p + (a / 1e3).toFixed(1) + 'K'; return '$' + fmt(n); };
+    const fmtVal = (v, c) => {
+    if (v == null) return '—';
+    // Use OutputColumn as primary signal — most reliable
+    if (c.OutputColumn === 'RAW_TRUE' || c.OutputColumn === 'RAW_FALSE') {
+        return fmt(v, 0);                    // always plain integer: 63, 95, 123
+    }
+    if (c.OutputColumn === 'RAW_SUM') {
+        // money hint from label
+        if (/pipeline|deal|price|value|revenue|cost/i.test(c.MetricLabel))
+            return fmtMoney(v);
+        return fmtK(v);                      // plain number: 1.4M, 50K etc.
+    }
+    if (c.OutputColumn === 'COMPUTED') {
+        // time hint
+        if (/time|duration/i.test(c.MetricLabel)) return fmt(v, 2) + ' min';
+        // money hint
+        if (/pipeline|deal|price|value|revenue|cost/i.test(c.MetricLabel))
+            return fmtMoney(v);
+        // percentage hint
+        if (/rate|percent|capture/i.test(c.MetricLabel)) return fmt(v, 1) + '%';
+        // score / average — 2 decimal places
+        return fmt(v, 2);
+    }
+    // fallback
+    return fmtK(v);
+};
+    const fmtMonth = m => { const s = String(m).replace(/\D/g, ''); return s.length >= 6 ? s.slice(0, 4) + ' - ' + s.slice(4, 6) : m; };
+    const destroy = id => { if (charts[id]) { charts[id].destroy(); delete charts[id]; } };
+    const destroyAll = () => Object.keys(charts).forEach(destroy);
+
+    function sparkData(val, n = 12) { if (val == null || val === 0) return Array(n).fill(0); const b = val * (.6 + Math.random() * .2); return Array.from({ length: n }, (_, i) => { const t = i / (n - 1); return Math.max(0, b + (val - b) * t + (Math.random() - .5) * val * .12); }); }
+    function simTrend(val, n = 12) { if (val == null) return Array(n).fill(0); const b = val * (.4 + Math.random() * .35); return Array.from({ length: n }, (_, i) => { const t = i / (n - 1); return Math.max(0, b + (val - b) * t + (Math.random() - .5) * val * .18); }); }
+    function simHourly(total) { const w = [1, 1, 1, 1, 2, 3, 5, 8, 12, 14, 13, 11, 10, 11, 12, 11, 9, 7, 5, 4, 3, 2, 1, 1]; const s = w.reduce((a, b) => a + b, 0); return w.map(x => Math.round((total || 100) * x / s)); }
+    function monthLabels(base) { const s = String(base).replace(/\D/g, ''); let y = parseInt(s.slice(0, 4)), m = parseInt(s.slice(4, 6)); const l = []; for (let i = 11; i >= 0; i--) { let mm = m - i, yy = y; while (mm <= 0) { mm += 12; yy--; } l.push(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][mm - 1]); } return l; }
+
+    /* ═══════════════════════════════════════════════
+       THEME SYSTEM
+       ═══════════════════════════════════════════════ */
+    function applyTheme(name) {
+      const t = THEMES[name]; if (!t) return; currentTheme = name;
+      const r = document.documentElement.style;
+      r.setProperty('--bg', t.bg); r.setProperty('--bg2', t.bg2); r.setProperty('--card', t.card); r.setProperty('--card-h', t.cardH);
+      r.setProperty('--border', t.border); r.setProperty('--border-h', t.borderH);
+      r.setProperty('--text', t.text); r.setProperty('--text2', t.text2); r.setProperty('--text3', t.text3);
+      r.setProperty('--accent', t.accent); r.setProperty('--accent2', t.accent2); r.setProperty('--accent-a', t.accentA);
+      r.setProperty('--green', t.green); r.setProperty('--amber', t.amber); r.setProperty('--red', t.red);
+      r.setProperty('--purple', t.purple); r.setProperty('--cyan', t.cyan); r.setProperty('--pink', t.pink); r.setProperty('--lime', t.lime);
+      r.setProperty('--tt-bg', t.ttBg); r.setProperty('--tt-border', t.ttBorder);
+      r.setProperty('--grid', t.grid); r.setProperty('--cborder', t.cBorder); r.setProperty('--ctext', t.cText);
+      r.setProperty('--funnel-text', t.funnelText);
+      if (!t.isDark) r.setProperty('--sidebar-bg', 'linear-gradient(180deg,#1e293b,#0f172a)');
+      else r.setProperty('--sidebar-bg', 'linear-gradient(180deg,' + t.bg2 + ',' + t.bg + ')');
+
+      Chart.defaults.color = t.cText; Chart.defaults.borderColor = t.cBorder;
+      Chart.defaults.plugins.tooltip.backgroundColor = t.ttBg;
+      Chart.defaults.plugins.tooltip.titleColor = t.text;
+      Chart.defaults.plugins.tooltip.bodyColor = t.text2;
+      Chart.defaults.plugins.tooltip.borderColor = t.ttBorder;
+
+      document.querySelectorAll('.tdot').forEach(d => d.classList.toggle('active', d.dataset.theme === name));
+      localStorage.setItem('dash-theme', name);
+    }
+
+    function buildThemeDots() {
+      const c = document.getElementById('themeDots');
+      c.innerHTML = Object.entries(THEMES).map(([k, t]) => `<div class="tdot${k === currentTheme ? ' active' : ''}" data-theme="${k}" style="background:${t.dot}" onclick="setTheme('${k}')"><span class="tdot-tip">${t.name}</span></div>`).join('');
+    }
+    function setTheme(name) {
+      applyTheme(name);
+      destroyAll();
+      if (dataLoaded) renderPage(currentPage);
+    }
+
+    /* ═══════════════════════════════════════════════
+       NAVIGATION
+       ═══════════════════════════════════════════════ */
+    const PAGE_TITLES = { dashboard: 'Chat Analytics', trends: 'Performance Trends', agents: 'Agent Performance', chats: 'Chat Insights', settings: 'Settings', help: 'Help Center' };
+
+    function navigateTo(page) {
+      if (!dataLoaded || page === currentPage) return;
+      currentPage = page;
+      document.querySelectorAll('.sb-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
+      document.getElementById('tbTitle').textContent = PAGE_TITLES[page] || 'Dashboard';
+      destroyAll();
+      renderPage(page);
+    }
+
+    function renderPage(page) {
+      const area = document.getElementById('contentArea');
+      area.innerHTML = ''; area.className = 'content';
+      switch (page) {
+        case 'dashboard': renderDashboard(area); break;
+        case 'trends': renderTrends(area); break;
+        case 'agents': renderAgents(area); break;
+        case 'chats': renderChats(area); break;
+        case 'settings': renderSettings(area); break;
+        case 'help': renderHelp(area); break;
+      }
+    }
+
+    /* ═══════════════════════════════════════════════
+       LOADING & ERROR
+       ═══════════════════════════════════════════════ */
+    function setLoading(on, msg = '', sub = '') {
+      document.getElementById('loaderTxt').textContent = msg || 'Loading...';
+      document.getElementById('loaderSub').textContent = sub;
+      document.getElementById('loader').classList.toggle('off', !on);
+      document.getElementById('sidebar').classList.toggle('locked', on);
+      const b = document.getElementById('btnRefresh'); b.disabled = on;
+      b.innerHTML = on ? '<span class="btn-spin"></span> Loading...' : 'Refresh';
+    }
+    function showErr(t, m) {
+      const title = document.getElementById('errTitle');
+      const msg = document.getElementById('errMsg');
+      const card = document.getElementById('errCard');
+      if (!title || !msg || !card) return;
+      title.textContent = t;
+      msg.textContent = m;
+      card.style.display = 'block';
+    }
+    function hideErr() {
+      const card = document.getElementById('errCard');
+      if (card) card.style.display = 'none';
+    }
+
+    /* ═══════════════════════════════════════════════
+       API
+       ═══════════════════════════════════════════════ */
+    async function loadSites() { try { const r = await fetch(`${API}/api/websites`); const d = await r.json(); document.getElementById('selSite').innerHTML = d.map(s => `<option value="${s}">${s}</option>`).join(''); } catch (e) { console.warn(e); } }
+    async function loadMonths() { const w = document.getElementById('selSite').value; try { const r = await fetch(`${API}/api/months?websiteId=${w}`); const d = await r.json(); document.getElementById('selMonth').innerHTML = d.map(m => `<option value="${m}">${fmtMonth(m)}</option>`).join(''); } catch (e) { console.warn(e); } }
+    async function onSiteChange() { await loadMonths(); await loadDashboard(); }
+    async function loadCfg(w) { const [a, b] = await Promise.all([fetch(`${API}/api/config?websiteId=${w}`), fetch(`${API}/api/topnconfig?websiteId=${w}`)]); metricCfg = await a.json(); topnCfg = await b.json(); }
+
+    /* ═══════════════════════════════════════════════
+       CHART BUILDERS (Shared)
+       ═══════════════════════════════════════════════ */
+    function mkBar(cont, cfgs, metrics, uid) {
+      cont.innerHTML = '<canvas id="cv_' + uid + '"></canvas>';
+      const labels = cfgs.map(c => c.MetricLabel.replace(/_/g, ' '));
+      const data = cfgs.map(c => { const v = metrics[c.MetricLabel]; return typeof v === 'number' ? v : 0; });
+      const colors = cfgs.map((_, i) => COLORS[i % COLORS.length]);
+      charts[uid] = new Chart(document.getElementById('cv_' + uid), { type: 'bar', data: { labels, datasets: [{ data, backgroundColor: colors.map(c => c + 'cc'), borderColor: colors, borderWidth: 1, borderRadius: 5, borderSkipped: false, maxBarThickness: 48 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { title: c => c[0].label, label: c => ' ' + fmtK(c.parsed.y) } } }, scales: { x: { grid: { display: false }, ticks: { maxRotation: 45, font: { size: 10 } } }, y: { beginAtZero: true, grid: { color: 'var(--grid)' }, ticks: { callback: v => fmtK(v), font: { family: "'DM Mono',monospace", size: 10 } } } }, animation: { duration: 900, easing: 'easeOutQuart' } } });
+    }
+    function mkHBar(cont, cfgs, metrics, uid) {
+      cont.innerHTML = '<canvas id="cv_' + uid + '"></canvas>';
+      const labels = cfgs.map(c => c.MetricLabel.replace(/_/g, ' '));
+      const data = cfgs.map(c => { const v = metrics[c.MetricLabel]; return typeof v === 'number' ? v : 0; });
+      const colors = cfgs.map((_, i) => COLORS[i % COLORS.length]);
+      charts[uid] = new Chart(document.getElementById('cv_' + uid), { type: 'bar', data: { labels, datasets: [{ data, backgroundColor: colors.map(c => c + 'cc'), borderColor: colors, borderWidth: 1, borderRadius: 4, borderSkipped: false, maxBarThickness: 26 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + fmtK(c.parsed.x) } } }, scales: { x: { beginAtZero: true, grid: { color: 'var(--grid)' }, ticks: { callback: v => fmtK(v), font: { family: "'DM Mono',monospace", size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10 } } } }, animation: { duration: 900, easing: 'easeOutQuart' } } });
+    }
+    function mkDoughnut(cont, cfgs, metrics, uid) {
+      cont.innerHTML = '<canvas id="cv_' + uid + '"></canvas>';
+      const labels = cfgs.map(c => c.MetricLabel.replace(/_/g, ' '));
+      const data = cfgs.map(c => { const v = metrics[c.MetricLabel]; return typeof v === 'number' ? Math.abs(v) : 0; });
+      const colors = cfgs.map((_, i) => COLORS[i % COLORS.length]);
+      const cardBg = getComputedStyle(document.documentElement).getPropertyValue('--card').trim();
+      charts[uid] = new Chart(document.getElementById('cv_' + uid), { type: 'doughnut', data: { labels, datasets: [{ data, backgroundColor: colors.map(c => c + 'dd'), borderColor: cardBg, borderWidth: 3, hoverOffset: 6 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'right', labels: { boxWidth: 10, padding: 10, usePointStyle: true, pointStyle: 'rectRounded', font: { size: 10 } } }, tooltip: { callbacks: { label: c => { const tot = c.dataset.data.reduce((a, b) => a + b, 0); const pct = tot ? ((c.parsed / tot) * 100).toFixed(1) : 0; return ` ${c.label}: ${fmtK(c.parsed)} (${pct}%)`; } } } }, animation: { animateRotate: true, duration: 1000 } } });
+    }
+    function mkFunnel(cont, cfgs, metrics) {
+      const items = cfgs.map((c, i) => ({ label: c.MetricLabel.replace(/_/g, ' '), value: metrics[c.MetricLabel], color: COLORS[i % COLORS.length] }));
+      const vals = items.map(x => typeof x.value === 'number' ? Math.abs(x.value) : 0);
+      const maxV = Math.max(...vals, 1);
+      let h = '<div class="funnel-wrap">';
+      items.forEach((it, i) => { const pct = maxV ? (vals[i] / maxV * 100) : 0; const cr = i === 0 ? '100%' : (maxV && vals[0] ? (vals[i] / vals[0] * 100).toFixed(1) + '%' : '—'); const dr = i === 0 ? '' : (vals[i - 1] && vals[i] != null ? '−' + ((1 - vals[i] / vals[i - 1]) * 100).toFixed(1) + '%' : ''); h += `<div class="funnel-row"><div class="funnel-bar" style="width:${Math.max(pct, 16)}%;background:${it.color}dd;"><span class="funnel-lbl">${it.label}</span><span class="funnel-val">${fmtK(it.value)}</span></div><span class="funnel-rate">${cr}</span><span class="funnel-drop">${dr}</span></div>`; });
+      h += '</div>'; cont.innerHTML = h;
+    }
+    function mkLine(cont, labels, datasets, uid, opts = {}) {
+      cont.innerHTML = '<canvas id="cv_' + uid + '"></canvas>';
+      charts[uid] = new Chart(document.getElementById('cv_' + uid), { type: 'line', data: { labels, datasets: datasets.map(d => ({ label: d.label, data: d.data, borderColor: d.color, backgroundColor: d.color + '18', borderWidth: 2, tension: .4, pointRadius: opts.pointRadius ?? 3, pointHoverRadius: 6, pointBackgroundColor: d.color, fill: d.fill ?? true })) }, options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' }, plugins: { legend: { display: opts.legend ?? true, labels: { boxWidth: 10, padding: 8, usePointStyle: true, pointStyle: 'circle', font: { size: 10 } } }, tooltip: { callbacks: { label: c => ' ' + c.dataset.label + ': ' + fmtK(c.parsed.y) } } }, scales: { x: { grid: { display: false }, ticks: { font: { size: 9 } } }, y: { beginAtZero: true, grid: { color: 'var(--grid)' }, ticks: { callback: v => fmtK(v), font: { family: "'DM Mono',monospace", size: 9 } } } }, animation: { duration: 1000 } } });
+    }
+
+    /* ═══════════════════════════════════════════════
+       PAGE: DASHBOARD
+       ═══════════════════════════════════════════════ */
+    function renderDashboard(area) {
+      const m = apiData.metrics, tn = apiData.topn;
+      // KPIs
+     // REPLACE WITH — pick most meaningful metric per category:
+const PREFERRED_KPI = [
+    'TotalChats',
+    'QualifiedLeads',
+    'FollowUpPromised',
+    'PositiveSentimentChats',
+    'TotalPipelineValue',
+    'MeetingsScheduled',
+    'ScriptAdherence',
+    'ConversionRate',
+    'LeadCaptureRate',
+    'AveragePolitenessScore',
+    'Bookings',
+    'Appointments',
+    'QuoteRequests',
+    'DemoTrialRequests',
+    'SalesPricingInquiries',
+    'AverageDealSize'
+];
+
+// First try preferred list, then fall back to first-per-category
+const seen = new Set(), kpis = [];
+
+// Pass 1: add preferred metrics that exist in this website's config
+metricCfg.forEach(c => {
+    if (PREFERRED_KPI.includes(c.MetricLabel) && kpis.length < 12) {
+        kpis.push(c);
+        seen.add(c.MetricLabel);
+    }
+});
+
+// Pass 2: fill remaining slots with first-per-category fallback
+metricCfg.forEach(c => {
+    if (!seen.has(c.MetricLabel) && !seen.has(c.MetricCategory) && kpis.length < 6) {
+        kpis.push(c);
+        seen.add(c.MetricCategory);
+        seen.add(c.MetricLabel);
+    }
+});
+      let h = '';
+      if (kpis.length) {
+        h += '<div class="sec-label">Key Metrics</div><div class="kpi-grid">';
+        kpis.forEach((cfg, i) => {
+          const cs = catOf(cfg.MetricCategory); const v = m[cfg.MetricLabel]; const tr = (Math.random() * 30 - 5).toFixed(1); const up = parseFloat(tr) >= 0;const fmtLabel = s => s.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/\s+/g, ' ').trim();
+          h += `<div class="kpi-card" style="--kpi-c:${cs.color};animation-delay:${i * 50}ms"><div class="kpi-top"><div class="kpi-icon" style="background:${cs.color}15;border-color:${cs.color}30">${cs.icon}</div><div class="kpi-badge" style="color:${up ? 'var(--green)' : 'var(--red)'};background:${up ? 'rgba(34,197,94,.1)' : 'rgba(239,68,68,.1)'};border-color:${up ? 'rgba(34,197,94,.15)' : 'rgba(239,68,68,.15)'}">${up ? '▲' : '▼'} ${Math.abs(tr)}%</div></div><div class="kpi-val">${fmtVal(v, cfg)}</div><div class="kpi-lbl">${fmtLabel(cfg.MetricLabel)}</div><div class="kpi-spark"><canvas id="spark_${i}"></canvas></div></div>`;
+        });
+        h += '</div>';
+      }
+      // Category charts
+      const grouped = {}; metricCfg.forEach(c => { const cat = c.MetricCategory || 'Other'; if (!grouped[cat]) grouped[cat] = []; grouped[cat].push(c); });
+      const cats = Object.keys(grouped);
+      if (cats.length) {
+        h += '<div class="sec-label">Analytics Overview</div><div class="chart-grid">';
+        cats.forEach((cat, ci) => {
+          const cfgs = grouped[cat]; const cs = catOf(cat); const uid = 'd_cat_' + cat.replace(/\s+/g, '_');
+          h += `<div class="chart-card${cs.chart === 'funnel' ? ' wide' : ''}" style="animation-delay:${ci * 60}ms"><div class="cc-head"><div class="cc-title"><span class="cc-dot" style="background:${cs.color}"></span>${cs.icon} ${cat}</div><div class="cc-badge">${cfgs.length} metric${cfgs.length > 1 ? 's' : ''}</div></div><div class="cc-body${cs.chart === 'funnel' ? ' tall' : ''}" id="body_${uid}"></div></div>`;
+        });
+        h += '</div>';
+      }
+      // Top-N
+      if (topnCfg.length) {
+        h += '<div class="sec-label">Detailed Breakdown</div><div class="chart-grid topn-grid">';
+        topnCfg.forEach((tc, i) => {
+          const uid = 'd_tn_' + tc.ListType; const label = tc.ListLabel.replace(/([A-Z])/g, ' $1').trim();
+          h += `<div class="chart-card" style="animation-delay:${i * 50}ms"><div class="cc-head"><div class="cc-title"><span class="cc-dot" style="background:${COLORS[i % COLORS.length]}"></span>${label}</div><div class="cc-badge">Top ${tc.TopN || 5}</div></div><div class="cc-body" id="body_${uid}"></div></div>`;
+        });
+        h += '</div>';
+      }
+      area.innerHTML = h;
+
+      requestAnimationFrame(() => {
+        // Sparklines
+        kpis.forEach((cfg, i) => {
+          const cs = catOf(cfg.MetricCategory); const v = m[cfg.MetricLabel]; const d = sparkData(typeof v === 'number' ? v : 0); const ctx = document.getElementById(`spark_${i}`); if (!ctx) return;
+          charts[`spark_${i}`] = new Chart(ctx, { type: 'line', data: { labels: d.map((_, j) => j), datasets: [{ data: d, fill: true, borderColor: cs.color, backgroundColor: cs.color + '18', borderWidth: 2, tension: .45, pointRadius: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false } }, animation: { duration: 1000 } } });
+        });
+        // Category charts
+        cats.forEach(cat => {
+          const cfgs = grouped[cat]; const cs = catOf(cat); const uid = 'd_cat_' + cat.replace(/\s+/g, '_'); const body = document.getElementById(`body_${uid}`); if (!body) return;
+          if (cs.chart === 'funnel') mkFunnel(body, cfgs, m); else if (cs.chart === 'doughnut') mkDoughnut(body, cfgs, m, uid); else if (cs.chart === 'hbar') mkHBar(body, cfgs, m, uid); else mkBar(body, cfgs, m, uid);
+        });
+        // Top-N
+        topnCfg.forEach((tc, i) => {
+          const items = tn[tc.ListType] || []; const uid = 'd_tn_' + tc.ListType; const body = document.getElementById(`body_${uid}`); if (!body) return;
+          if (tc.FormatMode === 'VALUE_DASH') {
+            if (!items.length) { body.innerHTML = '<div class="no-data">No data</div>'; return; } body.innerHTML = '<canvas id="cv_' + uid + '"></canvas>'; const sc = { neutral: '#f59e0b', positive: '#22c55e', negative: '#ef4444' }; const cols = items.map(x => sc[x.ItemValue?.toLowerCase()] || COLORS[i % COLORS.length]); const cbg = getComputedStyle(document.documentElement).getPropertyValue('--card').trim(); charts[uid] = new Chart(document.getElementById('cv_' + uid), { type: 'doughnut', data: { labels: items.map(x => x.ItemValue), datasets: [{ data: items.map(x => x.ItemCount), backgroundColor: cols.map(c => c + 'dd'), borderColor: cbg, borderWidth: 3, hoverOffset: 6 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '56%', plugins: { legend: { position: 'right', labels: { boxWidth: 10, padding: 8, usePointStyle: true, pointStyle: 'rectRounded', font: { size: 10 } } }, tooltip: { callbacks: { label: c => ` ${c.label}: ${fmtK(c.parsed)}` } } }, animation: { animateRotate: true, duration: 900 } } });
+          } else if (tc.FormatMode === 'VALUE_COUNT') {
+            if (!items.length) { body.innerHTML = '<div class="no-data">No data</div>'; return; } body.innerHTML = '<canvas id="cv_' + uid + '"></canvas>'; const col = COLORS[i % COLORS.length]; charts[uid] = new Chart(document.getElementById('cv_' + uid), { type: 'bar', data: { labels: items.map(x => x.ItemValue), datasets: [{ data: items.map(x => x.ItemCount), backgroundColor: col + 'aa', borderColor: col, borderWidth: 1, borderRadius: 4, borderSkipped: false, maxBarThickness: 22 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + fmtK(c.parsed.x) } } }, scales: { x: { beginAtZero: true, grid: { color: 'var(--grid)' }, ticks: { callback: v => fmtK(v), font: { family: "'DM Mono',monospace", size: 9 } } }, y: { grid: { display: false }, ticks: { font: { size: 9 } } } }, animation: { duration: 900, easing: 'easeOutQuart' } } });
+          } else if (tc.ListType === 'FAQ') {
+            body.innerHTML = items.length ? '<div class="faq-list">' + items.map((it, j) => `<div class="faq-item"><div class="faq-num">${String(j + 1).padStart(2, '0')}</div><div class="faq-text">${it.ItemValue}</div></div>`).join('') + '</div>' : '<div class="no-data">No FAQ data</div>';
+          } else if (tc.ListType === 'Keyword') {
+            body.innerHTML = items.length ? '<div class="kw-wrap">' + items.map(it => `<div class="kw-chip">${it.ItemValue}</div>`).join('') + '</div>' : '<div class="no-data">No keywords</div>';
+          } else if (tc.ListType === 'Traffic') {
+            const mx = Math.max(...items.map(x => x.ItemCount), 1); body.innerHTML = items.length ? '<div style="padding:2px 0">' + items.map((it, j) => `<div class="traffic-item"><div class="traffic-ico">${REF_ICONS[it.ItemValue] || '🌐'}</div><div class="traffic-name">${it.ItemValue}</div><div style="flex:2;margin:0 6px"><div style="height:4px;background:var(--grid);border-radius:2px;overflow:hidden"><div style="height:100%;width:${(it.ItemCount / mx * 100).toFixed(1)}%;background:${COLORS[j % COLORS.length]};border-radius:2px;transition:width 1s"></div></div></div><div class="traffic-val">${fmtK(it.ItemCount)}</div></div>`).join('') + '</div>' : '<div class="no-data">No traffic data</div>';
+          } else { body.innerHTML = items.length ? '<div class="faq-list">' + items.map(it => `<div class="faq-item"><div class="faq-num">→</div><div class="faq-text">${it.ItemValue}</div></div>`).join('') + '</div>' : '<div class="no-data">No data</div>'; }
+        });
+      });
+    }
+
+    /* ═══════════════════════════════════════════════
+       PAGE: TRENDS
+       ═══════════════════════════════════════════════ */
+    function renderTrends(area) {
+      const m = apiData.metrics, ym = document.getElementById('selMonth').value;
+      const labels = monthLabels(ym);
+      const grouped = {}; metricCfg.forEach(c => { const cat = c.MetricCategory || 'Other'; if (!grouped[cat]) grouped[cat] = []; grouped[cat].push(c); });
+      const cats = Object.keys(grouped);
+      if (!cats.length) { area.innerHTML = '<div class="no-data">No metric configuration loaded</div>'; return; }
+
+      let h = '<div class="sec-label">12-Month Trend Analysis</div><div class="chart-grid">';
+      cats.forEach((cat, ci) => {
+        const cfgs = grouped[cat]; const cs = catOf(cat); const uid = 't_' + cat.replace(/\s+/g, '_');
+        h += `<div class="chart-card${cfgs.length > 4 ? ' wide' : ''}" style="animation-delay:${ci * 60}ms"><div class="cc-head"><div class="cc-title"><span class="cc-dot" style="background:${cs.color}"></span>${cs.icon} ${cat} Trend</div><div class="cc-badge">${cfgs.length} metric${cfgs.length > 1 ? 's' : ''}</div></div><div class="cc-body${cfgs.length > 4 ? ' tall' : ''}" id="body_${uid}"></div></div>`;
+      });
+      h += '</div>';
+      area.innerHTML = h;
+
+      requestAnimationFrame(() => {
+        cats.forEach(cat => {
+          const cfgs = grouped[cat]; const cs = catOf(cat); const uid = 't_' + cat.replace(/\s+/g, '_'); const body = document.getElementById(`body_${uid}`); if (!body) return;
+          const datasets = cfgs.map((c, i) => { const v = m[c.MetricLabel]; return { label: c.MetricLabel.replace(/_/g, ' '), color: COLORS[i % COLORS.length], data: simTrend(typeof v === 'number' ? v : 0) }; });
+          mkLine(body, labels, datasets, uid, { legend: cfgs.length > 1, pointRadius: 2 });
+        });
+      });
+    }
+
+    /* ═══════════════════════════════════════════════
+       PAGE: AGENTS
+       ═══════════════════════════════════════════════ */
+    function renderAgents(area) {
+      const m = apiData.metrics;
+      const agentCfgs = metricCfg.filter(c => c.MetricCategory === 'Agent');
+      let h = '';
+      if (!agentCfgs.length) { h = '<div class="no-data" style="margin-top:20px">No Agent metrics configured in the system. Agent performance data will appear here once Agent category metrics are added to the configuration.</div>'; area.innerHTML = h; return; }
+
+      // Agent KPIs
+      h += '<div class="sec-label">Agent Summary</div><div class="kpi-grid">';
+      agentCfgs.slice(0, 4).forEach((cfg, i) => {
+        const v = m[cfg.MetricLabel]; const tr = (Math.random() * 25 - 5).toFixed(1); const up = parseFloat(tr) >= 0;const fmtLabel = s => s.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/\s+/g, ' ').trim();
+        h += `<div class="kpi-card" style="--kpi-c:${COLORS[i % COLORS.length]};animation-delay:${i * 50}ms"><div class="kpi-top"><div class="kpi-icon" style="background:${COLORS[i % COLORS.length]}15;border-color:${COLORS[i % COLORS.length]}30">🤝</div><div class="kpi-badge" style="color:${up ? 'var(--green)' : 'var(--red)'};background:${up ? 'rgba(34,197,94,.1)' : 'rgba(239,68,68,.1)'};border-color:${up ? 'rgba(34,197,94,.15)' : 'rgba(239,68,68,.15)'}">${up ? '▲' : '▼'} ${Math.abs(tr)}%</div></div><div class="kpi-val">${fmtVal(v, cfg)}</div><div class="kpi-lbl">${fmtLabel(cfg.MetricLabel)}</div><div class="kpi-spark"><canvas id="aspark_${i}"></canvas></div></div>`;
+      });
+      h += '</div>';
+
+      // Large horizontal bar
+      h += '<div class="sec-label">All Agent Metrics</div><div class="chart-grid"><div class="chart-card wide" style="animation-delay:200ms"><div class="cc-head"><div class="cc-title"><span class="cc-dot" style="background:#22d3ee"></span>🤝 Agent Performance Breakdown</div><div class="cc-badge">' + agentCfgs.length + ' metrics</div></div><div class="cc-body tall" id="body_agent_main"></div></div></div>';
+
+      // Also show other categories as smaller charts
+      const otherCats = Object.keys(metricCfg.reduce((g, c) => { const cat = c.MetricCategory || 'Other'; if (cat !== 'Agent' && !g[cat]) g[cat] = []; if (cat !== 'Agent') g[cat].push(c); return g; }, {}));
+      if (otherCats.length) {
+        h += '<div class="sec-label">Other Categories</div><div class="chart-grid">';
+        otherCats.forEach((cat, ci) => {
+          const cfgs = metricCfg.filter(c => c.MetricCategory === cat); const cs = catOf(cat); const uid = 'ag_' + cat.replace(/\s+/g, '_');
+          h += `<div class="chart-card" style="animation-delay:${ci * 60}ms"><div class="cc-head"><div class="cc-title"><span class="cc-dot" style="background:${cs.color}"></span>${cs.icon} ${cat}</div><div class="cc-badge">${cfgs.length}</div></div><div class="cc-body" id="body_${uid}"></div></div>`;
+        });
+        h += '</div>';
+      }
+      area.innerHTML = h;
+
+      requestAnimationFrame(() => {
+        agentCfgs.slice(0, 4).forEach((cfg, i) => {
+          const v = m[cfg.MetricLabel]; const d = sparkData(typeof v === 'number' ? v : 0); const ctx = document.getElementById(`aspark_${i}`); if (!ctx) return;
+          charts[`aspark_${i}`] = new Chart(ctx, { type: 'line', data: { labels: d.map((_, j) => j), datasets: [{ data: d, fill: true, borderColor: COLORS[i % COLORS.length], backgroundColor: COLORS[i % COLORS.length] + '18', borderWidth: 2, tension: .45, pointRadius: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false } }, animation: { duration: 1000 } } });
+        });
+        mkHBar(document.getElementById('body_agent_main'), agentCfgs, m, 'agent_main');
+        otherCats.forEach(cat => {
+          const cfgs = metricCfg.filter(c => c.MetricCategory === cat); const cs = catOf(cat); const uid = 'ag_' + cat.replace(/\s+/g, '_'); const body = document.getElementById(`body_${uid}`); if (!body) return;
+          if (cs.chart === 'funnel') mkFunnel(body, cfgs, m); else if (cs.chart === 'doughnut') mkDoughnut(body, cfgs, m, uid); else if (cs.chart === 'hbar') mkHBar(body, cfgs, m, uid); else mkBar(body, cfgs, m, uid);
+        });
+      });
+    }
+
+    /* ═══════════════════════════════════════════════
+       PAGE: CHATS
+       ═══════════════════════════════════════════════ */
+    function renderChats(area) {
+      const m = apiData.metrics, tn = apiData.topn;
+      // Get total chats from Volume category
+      const volCfgs = metricCfg.filter(c => c.MetricCategory === 'Volume');
+      let totalChats = 0;
+      volCfgs.forEach(c => { const v = m[c.MetricLabel]; if (typeof v === 'number') totalChats = Math.max(totalChats, v); });
+      if (!totalChats) totalChats = 100;
+
+      let h = '<div class="sec-label">Hourly Chat Distribution</div><div class="chart-grid"><div class="chart-card wide" style="animation-delay:50ms"><div class="cc-head"><div class="cc-title"><span class="cc-dot" style="background:#4f8ff7"></span>💬 Chats by Hour of Day</div><div class="cc-badge">Simulated</div></div><div class="cc-body" id="body_hourly"></div></div></div>';
+
+      // Volume KPIs
+      if (volCfgs.length) {
+        h += '<div class="sec-label">Volume Metrics</div><div class="kpi-grid">';
+        volCfgs.slice(0, 4).forEach((cfg, i) => {
+          const v = m[cfg.MetricLabel];
+          h += `<div class="kpi-card" style="--kpi-c:${COLORS[i % COLORS.length]};animation-delay:${i * 50}ms"><div class="kpi-top"><div class="kpi-icon" style="background:${COLORS[i % COLORS.length]}15;border-color:${COLORS[i % COLORS.length]}30">💬</div></div><div class="kpi-val">${fmtVal(v, cfg)}</div><div class="kpi-lbl">${cfg.MetricLabel.replace(/_/g, ' ')}</div></div>`;
+        });
+        h += '</div>';
+      }
+
+      // FAQ & Keywords from topn
+      const faqCfg = topnCfg.find(c => c.ListType === 'FAQ');
+      const kwCfg = topnCfg.find(c => c.ListType === 'Keyword');
+      const trafficCfg = topnCfg.find(c => c.ListType === 'Traffic');
+
+      h += '<div class="chart-grid">';
+      if (faqCfg) { const items = tn.FAQ || []; h += `<div class="chart-card" style="animation-delay:200ms"><div class="cc-head"><div class="cc-title"><span class="cc-dot" style="background:#a78bfa"></span>❓ Top FAQs</div><div class="cc-badge">${items.length}</div></div><div class="cc-body" style="height:auto;max-height:340px;overflow-y:auto"><div class="faq-list">${items.length ? items.map((it, j) => `<div class="faq-item"><div class="faq-num">${String(j + 1).padStart(2, '0')}</div><div class="faq-text">${it.ItemValue}</div></div>`).join('') : '<div class="no-data">No FAQ data</div>'}</div></div></div>`; }
+      if (kwCfg) { const items = tn.Keyword || []; h += `<div class="chart-card" style="animation-delay:250ms"><div class="cc-head"><div class="cc-title"><span class="cc-dot" style="background:#f59e0b"></span>🏷️ Keywords</div><div class="cc-badge">${items.length}</div></div><div class="cc-body" style="height:auto;max-height:340px;overflow-y:auto">${items.length ? '<div class="kw-wrap">' + items.map(it => `<div class="kw-chip">${it.ItemValue}</div>`).join('') + '</div>' : '<div class="no-data">No keywords</div>'}</div></div>`; }
+      if (trafficCfg) { const items = tn.Traffic || []; const mx = Math.max(...items.map(x => x.ItemCount), 1); h += `<div class="chart-card" style="animation-delay:300ms"><div class="cc-head"><div class="cc-title"><span class="cc-dot" style="background:#22d3ee"></span>🌐 Traffic Sources</div><div class="cc-badge">${items.length}</div></div><div class="cc-body" style="height:auto;max-height:340px;overflow-y:auto">${items.length ? '<div style="padding:2px 0">' + items.map((it, j) => `<div class="traffic-item"><div class="traffic-ico">${REF_ICONS[it.ItemValue] || '🌐'}</div><div class="traffic-name">${it.ItemValue}</div><div style="flex:2;margin:0 6px"><div style="height:4px;background:var(--grid);border-radius:2px;overflow:hidden"><div style="height:100%;width:${(it.ItemCount / mx * 100).toFixed(1)}%;background:${COLORS[j % COLORS.length]};border-radius:2px"></div></div></div><div class="traffic-val">${fmtK(it.ItemCount)}</div></div>`).join('') + '</div>' : '<div class="no-data">No traffic data</div>'}</div></div>`; }
+      h += '</div>';
+
+      // Other topn items
+      const otherTopn = topnCfg.filter(c => !['FAQ', 'Keyword', 'Traffic'].includes(c.ListType));
+      if (otherTopn.length) {
+        h += '<div class="sec-label">Additional Lists</div><div class="chart-grid">';
+        otherTopn.forEach((tc, i) => {
+          const items = tn[tc.ListType] || []; const label = tc.ListLabel.replace(/([A-Z])/g, ' $1').trim();
+          if (tc.FormatMode === 'VALUE_DASH' || tc.FormatMode === 'VALUE_COUNT') {
+            h += `<div class="chart-card" style="animation-delay:${i * 50}ms"><div class="cc-head"><div class="cc-title"><span class="cc-dot" style="background:${COLORS[i % COLORS.length]}"></span>${label}</div><div class="cc-badge">Top ${tc.TopN || 5}</div></div><div class="cc-body" id="body_chat_${tc.ListType}"></div></div>`;
+          } else {
+            h += `<div class="chart-card" style="animation-delay:${i * 50}ms"><div class="cc-head"><div class="cc-title"><span class="cc-dot" style="background:${COLORS[i % COLORS.length]}"></span>${label}</div></div><div class="cc-body" style="height:auto;max-height:300px;overflow-y:auto"><div class="faq-list">${items.map(it => `<div class="faq-item"><div class="faq-num">→</div><div class="faq-text">${it.ItemValue}</div></div>`).join('') || '<div class="no-data">No data</div>'}</div></div></div>`;
+          }
+        });
+        h += '</div>';
+      }
+      area.innerHTML = h;
+
+      requestAnimationFrame(() => {
+        // Hourly chart
+        const hourlyBody = document.getElementById('body_hourly');
+        if (hourlyBody) {
+          const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0') + ':00');
+          const data = simHourly(totalChats);
+          hourlyBody.innerHTML = '<canvas id="cv_hourly"></canvas>';
+          charts.hourly = new Chart(document.getElementById('cv_hourly'), { type: 'bar', data: { labels: hours, datasets: [{ label: 'Chats', data, backgroundColor: '#4f8ff7aa', borderColor: '#4f8ff7', borderWidth: 1, borderRadius: 3, borderSkipped: false }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + fmtK(c.parsed.y) + ' chats' } } }, scales: { x: { grid: { display: false }, ticks: { font: { size: 8 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } }, y: { beginAtZero: true, grid: { color: 'var(--grid)' }, ticks: { callback: v => fmtK(v), font: { family: "'DM Mono',monospace", size: 9 } } } }, animation: { duration: 900 } } });
+        }
+        // Other topn charts
+        otherTopn.filter(tc => tc.FormatMode === 'VALUE_DASH' || tc.FormatMode === 'VALUE_COUNT').forEach((tc, i) => {
+          const items = tn[tc.ListType] || []; const uid = 'chat_' + tc.ListType; const body = document.getElementById(`body_${uid}`); if (!body) return;
+          if (tc.FormatMode === 'VALUE_DASH') {
+            if (!items.length) { body.innerHTML = '<div class="no-data">No data</div>'; return; } body.innerHTML = '<canvas id="cv_' + uid + '"></canvas>'; const sc = { neutral: '#f59e0b', positive: '#22c55e', negative: '#ef4444' }; const cols = items.map(x => sc[x.ItemValue?.toLowerCase()] || COLORS[i % COLORS.length]); const cbg = getComputedStyle(document.documentElement).getPropertyValue('--card').trim(); charts[uid] = new Chart(document.getElementById('cv_' + uid), { type: 'doughnut', data: { labels: items.map(x => x.ItemValue), datasets: [{ data: items.map(x => x.ItemCount), backgroundColor: cols.map(c => c + 'dd'), borderColor: cbg, borderWidth: 3 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '56%', plugins: { legend: { position: 'right', labels: { boxWidth: 10, padding: 8, usePointStyle: true, font: { size: 10 } } } }, animation: { animateRotate: true, duration: 900 } } });
+          } else {
+            if (!items.length) { body.innerHTML = '<div class="no-data">No data</div>'; return; } body.innerHTML = '<canvas id="cv_' + uid + '"></canvas>'; charts[uid] = new Chart(document.getElementById('cv_' + uid), { type: 'bar', data: { labels: items.map(x => x.ItemValue), datasets: [{ data: items.map(x => x.ItemCount), backgroundColor: COLORS[i % COLORS.length] + 'aa', borderColor: COLORS[i % COLORS.length], borderWidth: 1, borderRadius: 4, borderSkipped: false }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, grid: { color: 'var(--grid)' } }, y: { grid: { display: false }, ticks: { font: { size: 9 } } } }, animation: { duration: 900 } } });
+          }
+        });
+      });
+    }
+
+    /* ═══════════════════════════════════════════════
+       PAGE: SETTINGS
+       ═══════════════════════════════════════════════ */
+function renderSettings(area) {
+  let h = `
+    <div class="sec-label">Color Theme</div>
+    <div class="theme-grid">
+  `;
+
+  Object.entries(THEMES).forEach(([k, t]) => {
+    h += `
+      <div class="theme-opt ${k === currentTheme ? 'active' : ''}" onclick="setTheme('${k}')">
+        <div class="to-check">✓</div>
+        <div class="to-preview">
+          <span style="background:${t.bg}"></span>
+          <span style="background:${t.card}"></span>
+          <span style="background:${t.accent}"></span>
+          <span style="background:${t.border}"></span>
+        </div>
+        <div class="to-name">${t.name}</div>
+        <div class="to-desc">${t.isDark ? 'Dark theme' : 'Light theme'}</div>
+      </div>
+    `;
+  });
+
+  h += `
+    </div>
+    <div class="sec-label">About</div>
+    <div class="help-section">
+      <h3>Chat Analytics Dashboard</h3>
+      <p>A real-time analytics platform for monitoring chat performance, sales funnels, agent productivity, and customer sentiment.</p>
+    </div>
+
+    <div class="help-section">
+      <h3>Data Connection</h3>
+      <p>
+        API Endpoint: <code>${API}</code><br>
+        Current Website: <code>${document.getElementById('selSite').value}</code><br>
+        Current Period: <code>${document.getElementById('selMonth').value}</code><br>
+        Metric Categories: <code>${
+          Object.keys(
+            metricCfg.reduce((g, c) => {
+              g[c.MetricCategory] = 1;
+              return g;
+            }, {})
+          ).join(', ') || 'None'
+        }</code><br>
+        Top-N Lists: <code>${
+          (topnCfg.map(c => c.ListType).join(', ')) || 'None'
+        }</code>
+      </p>
+    </div>
+  `;
+
+  area.innerHTML = h;
+}
+
+    /* ═══════════════════════════════════════════════
+       PAGE: HELP
+       ═══════════════════════════════════════════════ */
+    function renderHelp(area) {
+      let h = '';
+      h += '<div class="help-section"><h3>Getting Started</h3><p>This dashboard connects to your chat analytics backend to visualize key performance indicators in real time. Use the <strong>Site</strong> and <strong>Period</strong> dropdowns in the top bar to select which website and month to analyze, then click <strong>Refresh</strong> to load the data.</p></div>';
+      h += '<div class="help-section"><h3>Navigation</h3><ul><li><strong>Dashboard</strong> — The main overview with KPI sparklines, category charts (bar, doughnut, funnel), and Top-N breakdowns.</li><li><strong>Trends</strong> — Simulated 12-month trend lines for each metric category. The current month uses real data; prior months are estimated.</li><li><strong>Agents</strong> — Focused view on Agent-category metrics with horizontal bar breakdown and KPI cards.</li><li><strong>Chats</strong> — Hourly chat distribution, FAQ list, keyword cloud, and traffic source analysis.</li><li><strong>Settings</strong> — Change the dashboard color theme. Five themes are available and your choice is saved in your browser.</li></ul></div>';
+      h += '<div class="help-section"><h3>Understanding the Charts</h3><ul><li><strong>Bar Charts</strong> — Used for Volume and Sales categories. Each bar represents one metric.</li><li><strong>Horizontal Bars</strong> — Used for Agent and Metadata categories where metric names are longer.</li><li><strong>Doughnut Charts</strong> — Used for Sentiment distribution showing positive/negative/neutral proportions.</li><li><strong>Funnel</strong> — Used for Lead conversion. Bar width shows relative volume; the right column shows conversion rate from the first step, and drop-off between consecutive steps.</li><li><strong>KPI Sparklines</strong> — The small trend line in each KPI card shows a simulated 12-point trend toward the current value.</li></ul></div>';
+      h += '<div class="help-section"><h3>Theme Customization</h3><p>Click any colored dot in the top bar to instantly switch themes, or visit <strong>Settings</strong> for larger previews. Your preference is stored in <code>localStorage</code> and persists across sessions. Five themes are available: Midnight Blue, Emerald Night, Sunset Blaze, Arctic Light, and Rose Quartz.</p></div>';
+      h += '<div class="help-section"><h3>Troubleshooting</h3><ul><li><strong>"Connection Failed"</strong> — Ensure your Flask backend is running at <code>' + API + '</code> and accepting CORS requests.</li><li><strong>"No Data Found"</strong> — The selected website/month combination has no records in the database.</li><li><strong>Empty charts</strong> — Check that metric configuration and Top-N configuration exist for the selected website.</li></ul></div>';
+      area.innerHTML = h;
+    }
+
+    /* ═══════════════════════════════════════════════
+       MAIN LOAD
+       ═══════════════════════════════════════════════ */
+    async function loadDashboard() {
+      const wid = document.getElementById('selSite').value, ym = document.getElementById('selMonth').value;
+      setLoading(true, 'Fetching analytics...', `${wid} · ${fmtMonth(ym)}`);
+      hideErr(); destroyAll(); dataLoaded = false;
+      try {
+        setLoading(true, 'Loading configuration...', wid);
+        await loadCfg(wid);
+        setLoading(true, 'Fetching metrics...', `${wid} · ${fmtMonth(ym)}`);
+        const res = await fetch(`${API}/api/stats?websiteId=${wid}&yearMonth=${ym}`);
+        const body = await res.json();
+        if (!res.ok) { showErr(res.status === 404 ? 'No Data Found' : 'API Error', body.error || 'Unknown error'); setLoading(false); return; }
+        apiData = { metrics: body.metrics, topn: body.topn };
+        document.getElementById('tbSub').textContent = `${body.metrics.WebsiteId || wid} · ${fmtMonth(body.metrics.YearMonth || ym)}`;
+        dataLoaded = true;
+        document.getElementById('tbTitle').textContent = PAGE_TITLES[currentPage];
+        renderPage(currentPage);
+      } catch (err) { showErr('Connection Failed', `Cannot reach ${API}. Is the server running? (${err.message})`); }
+      finally { setLoading(false); }
+    }
+
+    /* ═══════════════════════════════════════════════
+       INIT
+       ═══════════════════════════════════════════════ */
+    window.addEventListener('DOMContentLoaded', async () => {
+      applyTheme(localStorage.getItem('dash-theme') || 'midnight');
+      buildThemeDots();
+      setLoading(true, 'Initializing...', 'Loading website list');
+      await loadSites();
+      await loadMonths();
+      await loadDashboard();
+    });
+  </script>
+</body>
+
+</html>
